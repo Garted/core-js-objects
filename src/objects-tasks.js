@@ -18,7 +18,8 @@
  *    shallowCopy({}) => {}
  */
 function shallowCopy(obj) {
-  return { ...obj };
+  const newOb = { ...obj };
+  return { ...newOb };
 }
 
 /**
@@ -387,34 +388,123 @@ function group(array, keySelector, valueSelector) {
  *
  *  For more examples see unit tests.
  */
+function createSelector() {
+  const state = {
+    element: '',
+    id: '',
+    classes: [],
+    attrs: [],
+    pseudoClasses: [],
+    pseudoElement: '',
+    order: [],
+  };
 
+  const orderMap = {
+    element: 1,
+    id: 2,
+    class: 3,
+    attr: 4,
+    pseudoClass: 5,
+    pseudoElement: 6,
+  };
+
+  function checkOrder(type) {
+    if (
+      state.order.length &&
+      orderMap[type] < state.order[state.order.length - 1]
+    ) {
+      throw new Error(
+        'Selector parts should be arranged in the following order: element, id, class, attribute, pseudo-class, pseudo-element'
+      );
+    }
+    state.order.push(orderMap[type]);
+  }
+
+  function checkSingleton(type) {
+    if (
+      (type === 'element' && state.element) ||
+      (type === 'id' && state.id) ||
+      (type === 'pseudoElement' && state.pseudoElement)
+    ) {
+      throw new Error(
+        'Element, id and pseudo-element should not occur more than one time inside the selector'
+      );
+    }
+  }
+
+  const builder = {
+    element(value) {
+      checkSingleton('element');
+      checkOrder('element');
+      state.element = value;
+      return builder;
+    },
+    id(value) {
+      checkSingleton('id');
+      checkOrder('id');
+      state.id = `#${value}`;
+      return builder;
+    },
+    class(value) {
+      checkOrder('class');
+      state.classes.push(`.${value}`);
+      return builder;
+    },
+    attr(value) {
+      checkOrder('attr');
+      state.attrs.push(`[${value}]`);
+      return builder;
+    },
+    pseudoClass(value) {
+      checkOrder('pseudoClass');
+      state.pseudoClasses.push(`:${value}`);
+      return builder;
+    },
+    pseudoElement(value) {
+      checkSingleton('pseudoElement');
+      checkOrder('pseudoElement');
+      state.pseudoElement = `::${value}`;
+      return builder;
+    },
+    stringify() {
+      return (
+        state.element +
+        state.id +
+        state.classes.join('') +
+        state.attrs.join('') +
+        state.pseudoClasses.join('') +
+        state.pseudoElement
+      );
+    },
+  };
+
+  return builder;
+}
 const cssSelectorBuilder = {
-  element(/* value */) {
-    throw new Error('Not implemented');
+  element(value) {
+    return createSelector().element(value);
   },
-
-  id(/* value */) {
-    throw new Error('Not implemented');
+  id(value) {
+    return createSelector().id(value);
   },
-
-  class(/* value */) {
-    throw new Error('Not implemented');
+  class(value) {
+    return createSelector().class(value);
   },
-
-  attr(/* value */) {
-    throw new Error('Not implemented');
+  attr(value) {
+    return createSelector().attr(value);
   },
-
-  pseudoClass(/* value */) {
-    throw new Error('Not implemented');
+  pseudoClass(value) {
+    return createSelector().pseudoClass(value);
   },
-
-  pseudoElement(/* value */) {
-    throw new Error('Not implemented');
+  pseudoElement(value) {
+    return createSelector().pseudoElement(value);
   },
-
-  combine(/* selector1, combinator, selector2 */) {
-    throw new Error('Not implemented');
+  combine(selector1, combinator, selector2) {
+    return {
+      stringify() {
+        return `${selector1.stringify()} ${combinator} ${selector2.stringify()}`;
+      },
+    };
   },
 };
 
